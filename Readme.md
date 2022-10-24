@@ -90,11 +90,12 @@ In case when we use queues, we don't need any scheduler, which simplifies design
 
 ## Conclusion
 
-My personal preference is variant shown in 4.2 as it conforms to philosophy of OOP and DDD, and is more SOLID-compliant
-than others. We offload the logic related to data preparation to the entities responsible for it (single responsibility), 
-and encapsulate only the logic related to search in a new microservice (encapsulation). We keep our search index up to 
-date because the events are transferred there immediately. We have relatively low coupling as search service don't know
-anything about internal data structures in other microservices.
+My personal preference is variant shown in [4.2](#42-no-queue-prior-to-search-implementation) as it conforms to 
+philosophy of OOP and DDD, and is more SOLID-compliant  than others. We offload the logic related to data preparation 
+to the entities responsible for it (single responsibility), and encapsulate only the logic related to search in a new 
+microservice (encapsulation). We keep our search index up to date because the events are transferred there immediately. 
+We have relatively low coupling as search service don't know anything about internal data structures in other 
+microservices.
 
 As a side benefit, we can use replay functionality of Kafka for search customization (this might be useful if user's 
 right to view certain transactions or invoices is related to the history, or if  we will decide to implement some sort 
