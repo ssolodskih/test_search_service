@@ -1,0 +1,77 @@
+@startuml
+'!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+' uncomment the following line and comment the first to use locally
+!include C4_Container.puml
+
+AddElementTag("microService", $shape=EightSidedShape(), $bgColor="CornflowerBlue", $fontColor="white", $legendText="app")
+AddElementTag("storage", $shape=RoundedBoxShape(), $bgColor="lightSkyBlue", $fontColor="white")
+
+SHOW_PERSON_OUTLINE()
+
+Person(customer, Customer, "A customer")
+Container(app, "Search Front-end", "Javascript, Angular", "Allows customers to use search service")
+
+System_Boundary(ecommerce_system, "eCommerce System") {
+    
+
+    System_Boundary(search_microservice, "Search Microservice") {
+        Container(search_service_core, "Search Service Core", "Python", "Queries other microservices' APIs, filters results according to user permissions", $tags = "microService")
+        ContainerDb(search_db, "Search service database", "MongoDB/PostgreSQL", "Stores user prefences", $tags = "storage")
+        ContainerDb(search_cache, "Search query cache", "MongoDB/ Memcached/ Redis", "Stores query cache", $tags = "storage")
+        Container(search_engine, "Search Engine", "ElasticSearch", "Indexes data end executes search queries", $tags = "microService")
+
+        Rel_U(search_service_core, search_engine, "Queries and updates")
+        Rel_L(search_service_core, search_db, "Queries")
+        Rel_R(search_service_core, search_cache, "Queries, updates and invalidates")
+    }
+
+    System_Boundary(invoices_microservice, "Invoices Microservice") { 
+        Container(invoices_service, "App", "Python", "Manages invoices", $tags = "microService")
+        ContainerDb(invoices_db, "Invoices Database", "MongoDB", "Stores invoices data", $tags = "storage")
+        Container(invoices_api, "API", "FastAPI + Strawberry/Graphene", "Implements common search interface for invoices, queries search engine", $tags = "microService")
+        Container(invoices_search_engine, "Search Engine", "ElasticSearch + LogStash/Debezium", "Indexes data and executes queries")
+       
+        Rel(invoices_service, invoices_db, "Updates data in", "JDBC")
+        Rel(invoices_api, invoices_search_engine, "Queries")
+        Rel(invoices_search_engine, invoices_db, "Extracts and transforms data from", "BSON")
+    }
+    
+    System_Boundary(transactions_microservice, "Transactions Micorservice") {
+        Container(transactions_service, "App", "Python", "Manages transactions", $tags = "microService")
+        ContainerDb(transactions_db, "Transactions Database", "PostgreSQL", "Stores transactions data", $tags = "storage")
+        Container(transactions_api, "API", "FastAPI + Strawberry/Graphene", "Implements common search interface for transactions, queries search engine", $tags = "microService")
+        Container(transactions_search_engine, "Search Engine", "ElasticSearch + LogStash/Debezium", "Indexes data and executes queries")
+
+        
+        Rel(transactions_service, transactions_db, "Updats data in", "JDBC")
+        Rel(transactions_api, transactions_search_engine, "Queries")
+        Rel(transactions_search_engine, transactions_db, "Extracts and transforms data from", "BSON")
+    }
+
+    System_Boundary(receipts_microservice, "Receipts Microservice") {
+        Container(receipts_service, "App", "Python", "Manages receipts", $tags = "microService")
+        ContainerDb(receipts_db, "Receipts Database", "MongoDB", "Stores receipts data", $tags = "storage")
+        Container(receipts_api, "API", "FastAPI + Strawberry/Graphene", "Implements common search interface for receipts, queries search engine", $tags = "microService")
+        Container(receipts_search_engine, "Search Engine", "ElasticSearch + LogStash/Debezium", "Indexes data and executes queries")
+
+        Rel(receipts_service, receipts_db, "Updates data in", "JDBC")
+        Rel(receipts_api, receipts_search_engine, "Queries")
+        Rel(receipts_search_engine, receipts_db, "Extracts and transforms data from", "JDBC")
+        
+    }
+}
+
+Rel_D(customer, app, "Uses", "HTTPS")
+
+Rel_D(app, search_microservice, "Uses", "HTTPS")
+
+Rel_D(search_service_core, invoices_api, "Queries", "HTTPS/ GraphQL")
+Rel_D(search_service_core, transactions_api, "Queries", "HTTPS/ GraphQL")
+Rel_D(search_service_core, receipts_api, "Queries", "HTTPS/ GraphQL")
+
+Lay_D(search_microservice, invoices_microservice)
+Lay_R(invoices_microservice, transactions_microservice)
+Lay_R(transactions_microservice, receipts_microservice)
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,68 @@
+@startuml
+'!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+' uncomment the following line and comment the first to use locally
+!include C4_Container.puml
+
+AddElementTag("microService", $shape=EightSidedShape(), $bgColor="CornflowerBlue", $fontColor="white", $legendText="microservice")
+AddElementTag("storage", $shape=RoundedBoxShape(), $bgColor="lightSkyBlue", $fontColor="white")
+
+SHOW_PERSON_OUTLINE()
+
+Person(customer, Customer, "A customer")
+Container(app, "Search Front-end", "Javascript, Angular", "Allows customers to use search service")
+
+System_Boundary(c1, "eCommerce System") {
+    System_Boundary(c2, "Search Microservice") {
+        Container(search_service, "Search Service Core", "Python", "Queries search engine, performs result filtering according to user permissions", $tags = "microService")
+        Container(logstash, "Event Parser", "LogStash", "Ingests events from the queues", $tags = "microService")
+        Container(search_engine, "Search Engine", "ElasticSearch", "Indexes data end executes search queries", $tags = "microService")
+        ContainerDb(search_db, "User Prefences", "PostgreSQL", "Stores user permissions and properties", $tags = "storage")
+
+
+        Rel_R(logstash, search_engine, "Updates")
+        Rel(search_service, search_engine, "Queries", "REST API")
+        Rel_L(search_service, search_db, "Queries", "JDBC")
+    }
+'    Container(search_service, "Search Service", "Python", "Executes search queries", $tags = "microService")
+
+    Container(invoices_service, "Invoices Service", "Python", "Manages invoices", $tags = "microService")
+    ContainerDb(invoices_db, "Invoices Database", "MongoDB", "Stores invoices data", $tags = "storage")
+
+    Container(transactions_service, "Transactions Service", "Python", "Manages transactions", $tags = "microService")
+    ContainerDb(transactions_db, "Transactions Database", "PostgreSQL", "Stores transactions data", $tags = "storage")
+
+    Container(receipts_service, "Receipts Service", "Python", "Manages receipts", $tags = "microService")
+    ContainerDb(receipts_db, "Receipts Database", "MongoDB", "Stores receipts data", $tags = "storage")
+
+    Container(contracts_service, "Contracts Service", "Python", "Manages contracts", $tags = "microService")
+    ContainerDb(contracts_db, "Contracts Database", "PostgreSQL", "Stores contracts data", $tags = "storage")
+
+    Container(cc_service, "Credit Cards Service", "Python", "Manages credit cards", $tags = "microService")
+    ContainerDb(cc_db, "Credit Cards Database", "PostgreSQL", "Stores credit cards data", $tags = "storage")
+
+    Container(message_bus, "Message Bus", "RabbitMQ", "Transport for business events")
+
+    Rel_U(message_bus, logstash, "Updates search information using", "async, AMQP")
+}
+
+Rel_D(customer, app, "Uses", "HTTPS")
+
+Rel_D(app, search_service, "Uses", "HTTPS")
+
+Rel_U(transactions_service, message_bus, "Sends transactions events to")
+Rel_U(invoices_service, message_bus, "Sends invoices events to")
+Rel_U(receipts_service, message_bus, "Sends receipts events to")
+Rel_U(contracts_service, message_bus, "Sends contracts events to")
+Rel_U(cc_service, message_bus, "Sends credit card events to")
+
+
+Rel(invoices_service, invoices_db, "Stores data in", "BSON")
+Rel(transactions_service, transactions_db, "Stores data in", "JDBC")
+Rel(receipts_service, receipts_db, "Stores data in", "BSON")
+Rel(contracts_service, contracts_db, "Stores data in", "JDBC")
+Rel_D(cc_service, cc_db, "Stores data in", "JDBC")
+
+Lay_R(receipts_service, contracts_service)
+
+SHOW_LEGEND()
+@enduml

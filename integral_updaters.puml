@@ -1,0 +1,81 @@
+@startuml
+'!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+' uncomment the following line and comment the first to use locally
+!include C4_Container.puml
+
+AddElementTag("microService", $shape=EightSidedShape(), $bgColor="CornflowerBlue", $fontColor="white", $legendText="app")
+AddElementTag("storage", $shape=RoundedBoxShape(), $bgColor="lightSkyBlue", $fontColor="white")
+
+SHOW_PERSON_OUTLINE()
+
+Person(customer, Customer, "A customer")
+
+System_Boundary(ecommerce_system, "eCommerce System") {
+    Container(app, "Search Front-end", "Javascript, Angular", "Allows customers to use search service")
+
+    System_Boundary(search_microservice, "Search Microservice") {
+        Container(search_service_core, "Search Service Core", "Python", "Queries search engine, filters results according to user permissions", $tags = "microService")
+        Container(search_engine, "Search Engine", "ElasticSearch", "Indexes data and executes queries")
+        ContainerDb(search_db, "Search service database", "PostgreSQL", "Stores normalized data and user prefences", $tags = "storage")
+        ContainerDb(search_cache, "Search query cache", "MongoDB/Memcached/Redis", "Stores query cache", $tags = "storage")
+
+        Rel_D(search_service_core, search_engine, "Queries")
+        Rel_L(search_service_core, search_db, "Queries")
+        Rel_L(search_service_core, search_cache, "Queries, updates and invalidates")
+    }
+    
+    System_Boundary(message_bus, "Message Bus") { 
+        Container(kafka, "Message Bus", "Kafka", "Buffers events data")
+        Container(elasticsearch_connector, "Connector", "Kafka ElasticSearch connector", "Transfers data to search engine")
+        Container(jdbc_connector, "Connector", "Kafka JDBC connector", "Transfers data to database")
+        
+        Rel_U(kafka, jdbc_connector, "Transfers data")
+        Rel_U(kafka, elasticsearch_connector, "Transfers data")
+    }
+       
+    Rel_U(elasticsearch_connector, search_engine, "Transfers data to search engine")
+    Rel_U(jdbc_connector, search_db, "Transfers data to DB")
+
+    System_Boundary(invoices_microservice, "Invoices Microservice") { 
+        Container(invoices_service, "App", "Python", "Manages invoices", $tags = "microService")
+        ContainerDb(invoices_db, "Invoices Database", "MongoDB", "Stores invoices data", $tags = "storage")
+        Container(invoices_adapter, "Events Parser", "LogStash/Debezium", "Parses invoices events")
+       
+        Rel(invoices_service, invoices_db, "Updates data in", "JDBC")
+        Rel(invoices_adapter, invoices_db, "Monitors data changes")
+    }
+    
+    System_Boundary(transactions_microservice, "Transactions Micorservice") {
+        Container(transactions_service, "App", "Python", "Manages transactions", $tags = "microService")
+        ContainerDb(transactions_db, "Transactions Database", "PostgreSQL", "Stores transactions data", $tags = "storage")
+        Container(transactions_adapter, "Events Parser", "LogStash/Debezium", "Parses transactions events")
+
+        Rel(transactions_service, transactions_db, "Updats data in", "JDBC")
+        Rel(transactions_adapter, transactions_db, "Monitors data changes")
+    }
+
+    System_Boundary(receipts_microservice, "Receipts Microservice") {
+        Container(receipts_service, "App", "Python", "Manages receipts", $tags = "microService")
+        ContainerDb(receipts_db, "Receipts Database", "MongoDB", "Stores receipts data", $tags = "storage")
+        Container(receipts_adapter, "Events Parser", "LogStash/Debezium", "Parses receipts events")
+
+        Rel(receipts_service, receipts_db, "Updates data in", "JDBC")
+        Rel(receipts_adapter, receipts_db, "Monitors data changes")
+        
+    }
+}
+
+Rel_D(customer, app, "Uses", "HTTPS")
+
+Rel_D(app, search_service_core, "Uses", "HTTPS")
+
+Rel_U(transactions_adapter, kafka, "Sends transactions events to")
+Rel_U(invoices_adapter, kafka, "Sends invoices events to")
+Rel_U(receipts_adapter, kafka, "Sends receipts events to")
+
+Lay_D(search_microservice, invoices_microservice)
+Lay_R(invoices_microservice, transactions_microservice)
+Lay_R(transactions_microservice, receipts_microservice)
+
+SHOW_LEGEND()
+@enduml

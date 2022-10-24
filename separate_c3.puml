@@ -1,0 +1,33 @@
+@startuml
+'!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+' uncomment the following line and comment the first to use locally
+!include C4_Container.puml
+
+AddElementTag("microService", $shape=EightSidedShape(), $bgColor="CornflowerBlue", $fontColor="white", $legendText="app")
+AddElementTag("storage", $shape=RoundedBoxShape(), $bgColor="lightSkyBlue", $fontColor="white")
+
+SHOW_PERSON_OUTLINE()
+
+Container(app, "Search Front-end", "Javascript, Angular", "Allows customers to use search service")
+
+Container(search_engine, "Search Engine", "ElasticSearch", "Indexes data and executes queries")
+ContainerDb(search_db, "Search service database", "PostgreSQL", "Stores normalized data and user prefences", $tags = "storage")
+ContainerDb(search_cache, "Search query cache", "MongoDB/Memcached/Redis", "Stores query cache", $tags = "storage")
+
+System_Boundary(search_service_core, "Search Microservice Core") {
+    Container(search_service, "Search Service Core", "Python", "Implements search business logic, filters results according to user permissions", $tags = "microService")
+    Container(search_api, "API", "FastAPI", "Implements search API", $tags = "microService")
+    Container(db_adapter, "SQL Interface", "SQLAlchemy/SQLModels", "Handles SQL operations", $tags = "microService")
+
+    Rel(search_service, search_engine, "Queries")
+
+    Rel(search_api, search_service, "Uses")
+    Rel_L(search_service, db_adapter, "Uses")
+    Rel_L(db_adapter, search_db, "Queries")
+    Rel_R(search_api, search_cache, "Queries, updates and invalidates")
+}
+
+Rel_D(app, search_api, "Uses", "HTTPS")
+
+SHOW_LEGEND()
+@enduml
